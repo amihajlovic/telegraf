@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	// register in driver.
 	_ "github.com/jackc/pgx/stdlib"
@@ -25,16 +26,9 @@ type Postgresql struct {
 		Withdbname  bool
 		Tagvalue    string
 		Measurement string
+		Timestamp   string
 	}
 	Debug bool
-}
-
-type query []struct {
-	Sqlquery    string
-	Version     int
-	Withdbname  bool
-	Tagvalue    string
-	Measurement string
 }
 
 var ignoredColumns = map[string]bool{"stats_reset": true}
@@ -89,17 +83,20 @@ var sampleConfig = `
   ##   withdbname boolean
   ##   tagvalue string (comma separated)
   ##   measurement string
+  ##   timestamp string
   [[inputs.postgresql_extensible.query]]
     sqlquery="SELECT * FROM pg_stat_database"
     version=901
     withdbname=false
     tagvalue=""
     measurement=""
+    timestamp=""
   [[inputs.postgresql_extensible.query]]
     sqlquery="SELECT * FROM pg_stat_bgwriter"
     version=901
     withdbname=false
     tagvalue="postgresql.stats"
+    timestamp=""
 `
 
 func (p *Postgresql) SampleConfig() string {
@@ -124,6 +121,7 @@ func (p *Postgresql) Gather(acc telegraf.Accumulator) error {
 		tag_value   string
 		meas_name   string
 		columns     []string
+		timestamp_column string
 	)
 
 	// Retreiving the database version
@@ -139,6 +137,8 @@ func (p *Postgresql) Gather(acc telegraf.Accumulator) error {
 	for i := range p.Query {
 		sql_query = p.Query[i].Sqlquery
 		tag_value = p.Query[i].Tagvalue
+		timestamp_column = p.Query[i].Timestamp
+
 		if p.Query[i].Measurement != "" {
 			meas_name = p.Query[i].Measurement
 		} else {
@@ -181,7 +181,7 @@ func (p *Postgresql) Gather(acc telegraf.Accumulator) error {
 			}
 
 			for rows.Next() {
-				err = p.accRow(meas_name, rows, acc, columns)
+				err = p.accRow(meas_name, rows, acc, columns, timestamp_column)
 				if err != nil {
 					acc.AddError(err)
 					break
@@ -196,12 +196,13 @@ type scanner interface {
 	Scan(dest ...interface{}) error
 }
 
-func (p *Postgresql) accRow(meas_name string, row scanner, acc telegraf.Accumulator, columns []string) error {
+func (p *Postgresql) accRow(meas_name string, row scanner, acc telegraf.Accumulator, columns []string, timestamp_column string) error {
 	var (
 		err        error
 		columnVars []interface{}
 		dbname     bytes.Buffer
 		tagAddress string
+		timestamp  time.Time	
 	)
 
 	// this is where we'll store the column name with its *interface{}
@@ -231,6 +232,18 @@ func (p *Postgresql) accRow(meas_name string, row scanner, acc telegraf.Accumula
 	if tagAddress, err = p.SanitizedAddress(); err != nil {
 		return err
 	}
+
+	if timestamp_column != "" && columnMap[timestamp_column] != nil {
+		// extract thetimestamp value from the column map
+		timestamp = (*columnMap[timestamp_column]).(time.Time)
+		if err != nil{
+			return err;
+		}
+	} else {
+		timestamp = time.Now()
+	} 
+
+
 
 	// Process the additional tags
 	tags := map[string]string{
@@ -270,7 +283,7 @@ COLUMN:
 			fields[col] = *val
 		}
 	}
-	acc.AddFields(meas_name, fields, tags)
+	acc.AddFields(meas_name, fields, tags, timestamp)
 	return nil
 }
 

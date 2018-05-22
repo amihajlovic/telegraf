@@ -10,6 +10,7 @@ The example below has two queries are specified, with the following parameters:
 * A boolean to define if the query has to be run against some specific database (defined in the `databases` variable of the plugin section)
 * The name of the measurement
 * A list of the columns to be defined as tags
+* A name of the column to be used as a timestamp in influx. If ommited current timestamp will be used. 
 
 ```
 [[inputs.postgresql_extensible]]
@@ -42,12 +43,16 @@ The example below has two queries are specified, with the following parameters:
   # because the databases variable was set to ['postgres', 'pgbench' ] and the
   # withdbname was true.
   # Be careful that if the withdbname is set to false you don't have to define
-  # the where clause (aka with the dbname)
+  # the where clause (aka with the dbname).
   #
-  # the tagvalue field is used to define custom tags (separated by comas).
+  # The tagvalue field is used to define custom tags (separated by comas).
   # the query is expected to return columns which match the names of the
   # defined tags. The values in these columns must be of a string-type,
   # a number-type or a blob-type.
+  # 
+  # Timestamp field is used to define custom timestamp column. 
+  # It is used to backdate metrics you have collected in the database 
+  # (eg. quering log table with timestamp column).
   #
   # Structure :
   # [[inputs.postgresql_extensible.query]]
@@ -55,16 +60,19 @@ The example below has two queries are specified, with the following parameters:
   #   version string
   #   withdbname boolean
   #   tagvalue string (coma separated)
+  #   timestamp=""
   [[inputs.postgresql_extensible.query]]
     sqlquery="SELECT * FROM pg_stat_database where datname"
     version=901
     withdbname=false
     tagvalue=""
+    timestamp=""
   [[inputs.postgresql_extensible.query]]
     sqlquery="SELECT * FROM pg_stat_bgwriter"
     version=901
     withdbname=false
     tagvalue=""
+    timestamp=""
 ```
 
 The system can be easily extended using homemade metrics collection tools or
@@ -79,33 +87,39 @@ using postgreql extensions ([pg_stat_statements](http://www.postgresql.org/docs/
   version=901
   withdbname=false
   tagvalue=""
+  timestamp=""
 [[inputs.postgresql_extensible.query]]
   sqlquery="SELECT * FROM pg_stat_bgwriter"
   version=901
   withdbname=false
   tagvalue=""
+  timestamp=""
 [[inputs.postgresql_extensible.query]]
   sqlquery="select * from sessions"
   version=901
   withdbname=false
   tagvalue="db,username,state"
+  timestamp=""
 [[inputs.postgresql_extensible.query]]
   sqlquery="select setting as max_connections from pg_settings where \
   name='max_connections'"
   version=801
   withdbname=false
   tagvalue=""
+  timestamp=""
 [[inputs.postgresql_extensible.query]]
   sqlquery="select * from pg_stat_kcache"
   version=901
   withdbname=false
   tagvalue=""
+  timestamp=""
 [[inputs.postgresql_extensible.query]]
   sqlquery="select setting as shared_buffers from pg_settings where \
   name='shared_buffers'"
   version=801
   withdbname=false
   tagvalue=""
+  timestamp=""
 [[inputs.postgresql_extensible.query]]
   sqlquery="SELECT db, count( distinct blocking_pid ) AS num_blocking_sessions,\
   count( distinct blocked_pid) AS num_blocked_sessions FROM \
@@ -113,6 +127,7 @@ using postgreql extensions ([pg_stat_statements](http://www.postgresql.org/docs/
   version=901
   withdbname=false
   tagvalue="db"
+  timestamp=""
 [[inputs.postgresql_extensible.query]]
   sqlquery="""
     SELECT type, (enabled || '') AS enabled, COUNT(*)
@@ -122,6 +137,7 @@ using postgreql extensions ([pg_stat_statements](http://www.postgresql.org/docs/
   version=901
   withdbname=false
   tagvalue="type,enabled"
+  timestamp=""
 ```
 
 # Postgresql Side
