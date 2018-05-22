@@ -13,6 +13,7 @@
 
 ### New Inputs
 
+- [aurora](./plugins/inputs/aurora/README.md) - Contributed by @influxdata
 - [fibaro](./plugins/inputs/fibaro/README.md) - Contributed by @dynek
 - [jti_openconfig_telemetry](./plugins/inputs/jti_openconfig_telemetry/README.md) - Contributed by @ajhai
 - [mcrouter](./plugins/inputs/mcrouter/README.md) - Contributed by @cthayer
@@ -20,6 +21,7 @@
 
 ### New Processors
 
+- [regex](./plugins/processors/regex/README.md) - Contributed by @44px
 - [topk](./plugins/processors/topk/README.md) - Contributed by @mirath
 
 ### New Outputs
@@ -45,6 +47,9 @@
 - [#4010](https://github.com/influxdata/telegraf/pull/3455): Add application_insights output plugin.
 - [#4167](https://github.com/influxdata/telegraf/pull/4167): Added several important elasticsearch cluster health metrics.
 - [#4094](https://github.com/influxdata/telegraf/pull/4094): Add batch mode to mqtt output.
+- [#4158](https://github.com/influxdata/telegraf/pull/4158): Add aurora input plugin.
+- [#3839](https://github.com/influxdata/telegraf/pull/3839): Add regex processor plugin.
+- [#4165](https://github.com/influxdata/telegraf/pull/4165): Add support for Graphite 1.1 tags.
 
 ### Bugfixes
 
@@ -53,7 +58,7 @@
 - [#4118](https://github.com/influxdata/telegraf/pull/4118): Report results of dns_query instead of 0ms on timeout.
 - [#4155](https://github.com/influxdata/telegraf/pull/4155): Add consul service tags to metric.
 
-## v1.6.3 [unreleased]
+## v1.6.3 [2018-05-21]
 
 ### Bugfixes
 
@@ -62,6 +67,7 @@
 - [#4136](https://github.com/influxdata/telegraf/pull/4130): Fix jolokia2 timeout parsing.
 - [#4142](https://github.com/influxdata/telegraf/pull/4142): Fix error parsing dropwizard metrics.
 - [#4149](https://github.com/influxdata/telegraf/issues/4149): Fix librato output support for uint and bool.
+- [#4176](https://github.com/influxdata/telegraf/pull/4176): Fix waitgroup deadlock if url is incorrect in apache input.
 
 ## v1.6.2 [2018-05-08]
 
