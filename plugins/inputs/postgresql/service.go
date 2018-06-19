@@ -108,7 +108,7 @@ func (p *Service) Start(telegraf.Accumulator) (err error) {
 	p.DB.SetMaxIdleConns(p.MaxIdle)
 	p.DB.SetConnMaxLifetime(p.MaxLifetime.Duration)
 
-	if err= p.DB.QueryRow(`select current_database()`).Scan(p.DatabaseName); err != nil{
+	if err= p.DB.QueryRow(`select current_database()`).Scan(&p.DatabaseName); err != nil{
 		return err
 	}
 
