@@ -90,6 +90,7 @@ type Service struct {
 	MaxOpen       int
 	MaxLifetime   internal.Duration
 	DB            *sql.DB
+	DatabaseName  string
 }
 
 // Start starts the ServiceInput's service, whatever that may be
@@ -103,10 +104,17 @@ func (p *Service) Start(telegraf.Accumulator) (err error) {
 	if p.DB, err = sql.Open("pgx", p.Address); err != nil {
 		return err
 	}
-
 	p.DB.SetMaxOpenConns(p.MaxOpen)
 	p.DB.SetMaxIdleConns(p.MaxIdle)
 	p.DB.SetConnMaxLifetime(p.MaxLifetime.Duration)
+
+	if err= p.DB.QueryRow(`select current_database()`).Scan(p.DatabaseName); err != nil{
+		return err
+	}
+
+
+
+
 
 	return nil
 }

@@ -226,7 +226,7 @@ func (p *Postgresql) accRow(meas_name string, row scanner, acc telegraf.Accumula
 		// extract the database name from the column map
 		dbname.WriteString((*columnMap["datname"]).(string))
 	} else {
-		dbname.WriteString("postgres")
+		dbname.WriteString(p.DatabaseName)
 	}
 
 	if tagAddress, err = p.SanitizedAddress(); err != nil {
