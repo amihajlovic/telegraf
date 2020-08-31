@@ -30,6 +30,7 @@ func TestNewMetric(t *testing.T) {
 	require.Equal(t, now, m.Time())
 }
 
+// cpu value=1
 func baseMetric() telegraf.Metric {
 	tags := map[string]string{}
 	fields := map[string]interface{}{
@@ -111,6 +112,8 @@ func TestAddFieldOverwrites(t *testing.T) {
 	m.AddField("value", 1.0)
 	m.AddField("value", 42.0)
 
+	require.Equal(t, 1, len(m.FieldList()))
+
 	value, ok := m.GetField("value")
 	require.True(t, ok)
 	require.Equal(t, 42.0, value)
@@ -121,6 +124,8 @@ func TestAddFieldChangesType(t *testing.T) {
 
 	m.AddField("value", 1.0)
 	m.AddField("value", "xyzzy")
+
+	require.Equal(t, 1, len(m.FieldList()))
 
 	value, ok := m.GetField("value")
 	require.True(t, ok)
@@ -329,7 +334,7 @@ func TestValueType(t *testing.T) {
 	assert.Equal(t, telegraf.Gauge, m.Type())
 }
 
-func TestCopyAggreate(t *testing.T) {
+func TestCopyAggregate(t *testing.T) {
 	m1 := baseMetric()
 	m1.SetAggregate(true)
 	m2 := m1.Copy()

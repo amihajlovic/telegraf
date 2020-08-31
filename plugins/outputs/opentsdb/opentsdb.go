@@ -3,6 +3,7 @@ package opentsdb
 import (
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"net/url"
 	"regexp"
@@ -16,13 +17,14 @@ import (
 
 var (
 	allowedChars = regexp.MustCompile(`[^a-zA-Z0-9-_./\p{L}]`)
-	hypenChars   = strings.NewReplacer(
+	hyphenChars  = strings.NewReplacer(
 		"@", "-",
 		"*", "-",
 		`%`, "-",
 		"#", "-",
 		"$", "-")
-	defaultSeperator = "_"
+	defaultHttpPath  = "/api/put"
+	defaultSeparator = "_"
 )
 
 type OpenTSDB struct {
@@ -31,7 +33,8 @@ type OpenTSDB struct {
 	Host string
 	Port int
 
-	HttpBatchSize int
+	HttpBatchSize int // deprecated httpBatchSize form in 1.8
+	HttpPath      string
 
 	Debug bool
 
@@ -52,7 +55,11 @@ var sampleConfig = `
 
   ## Number of data points to send to OpenTSDB in Http requests.
   ## Not used with telnet API.
-  httpBatchSize = 50
+  http_batch_size = 50
+
+  ## URI Path for Http requests to OpenTSDB.
+  ## Used in cases where OpenTSDB is located behind a reverse proxy.
+  http_path = "/api/put"
 
   ## Debug true - Prints OpenTSDB communication
   debug = false
@@ -121,6 +128,7 @@ func (o *OpenTSDB) WriteHttp(metrics []telegraf.Metric, u *url.URL) error {
 		Scheme:    u.Scheme,
 		User:      u.User,
 		BatchSize: o.HttpBatchSize,
+		Path:      o.HttpPath,
 		Debug:     o.Debug,
 	}
 
@@ -129,10 +137,14 @@ func (o *OpenTSDB) WriteHttp(metrics []telegraf.Metric, u *url.URL) error {
 		tags := cleanTags(m.Tags())
 
 		for fieldName, value := range m.Fields() {
-			switch value.(type) {
+			switch fv := value.(type) {
 			case int64:
 			case uint64:
 			case float64:
+				// JSON does not support these special values
+				if math.IsNaN(fv) || math.IsInf(fv, 0) {
+					continue
+				}
 			default:
 				log.Printf("D! OpenTSDB does not support metric value: [%s] of type [%T].\n", value, value)
 				continue
@@ -174,10 +186,14 @@ func (o *OpenTSDB) WriteTelnet(metrics []telegraf.Metric, u *url.URL) error {
 		tags := ToLineFormat(cleanTags(m.Tags()))
 
 		for fieldName, value := range m.Fields() {
-			switch value.(type) {
+			switch fv := value.(type) {
 			case int64:
 			case uint64:
 			case float64:
+				// JSON does not support these special values
+				if math.IsNaN(fv) || math.IsInf(fv, 0) {
+					continue
+				}
 			default:
 				log.Printf("D! OpenTSDB does not support metric value: [%s] of type [%T].\n", value, value)
 				continue
@@ -206,7 +222,10 @@ func (o *OpenTSDB) WriteTelnet(metrics []telegraf.Metric, u *url.URL) error {
 func cleanTags(tags map[string]string) map[string]string {
 	tagSet := make(map[string]string, len(tags))
 	for k, v := range tags {
-		tagSet[sanitize(k)] = sanitize(v)
+		val := sanitize(v)
+		if val != "" {
+			tagSet[sanitize(k)] = val
+		}
 	}
 	return tagSet
 }
@@ -251,8 +270,8 @@ func (o *OpenTSDB) Close() error {
 }
 
 func sanitize(value string) string {
-	// Apply special hypenation rules to preserve backwards compatibility
-	value = hypenChars.Replace(value)
+	// Apply special hyphenation rules to preserve backwards compatibility
+	value = hyphenChars.Replace(value)
 	// Replace any remaining illegal chars
 	return allowedChars.ReplaceAllLiteralString(value, "_")
 }
@@ -260,7 +279,8 @@ func sanitize(value string) string {
 func init() {
 	outputs.Add("opentsdb", func() telegraf.Output {
 		return &OpenTSDB{
-			Separator: defaultSeperator,
+			HttpPath:  defaultHttpPath,
+			Separator: defaultSeparator,
 		}
 	})
 }

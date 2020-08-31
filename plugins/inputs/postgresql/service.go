@@ -3,6 +3,9 @@ package postgresql
 import (
 	"database/sql"
 	"fmt"
+	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/pgtype"
+	"github.com/jackc/pgx/stdlib"
 	"net"
 	"net/url"
 	"regexp"
@@ -91,6 +94,7 @@ type Service struct {
 	MaxLifetime   internal.Duration
 	DB            *sql.DB
 	DatabaseName  string
+	IsPgBouncer   bool
 }
 
 // Start starts the ServiceInput's service, whatever that may be
@@ -101,7 +105,41 @@ func (p *Service) Start(telegraf.Accumulator) (err error) {
 		p.Address = localhost
 	}
 
-	if p.DB, err = sql.Open("pgx", p.Address); err != nil {
+	connectionString := p.Address
+
+	// Specific support to make it work with PgBouncer too
+	// See https://github.com/influxdata/telegraf/issues/3253#issuecomment-357505343
+	if p.IsPgBouncer {
+		d := &stdlib.DriverConfig{
+			ConnConfig: pgx.ConnConfig{
+				PreferSimpleProtocol: true,
+				RuntimeParams: map[string]string{
+					"client_encoding": "UTF8",
+				},
+				CustomConnInfo: func(c *pgx.Conn) (*pgtype.ConnInfo, error) {
+					info := c.ConnInfo.DeepCopy()
+					info.RegisterDataType(pgtype.DataType{
+						Value: &pgtype.OIDValue{},
+						Name:  "int8OID",
+						OID:   pgtype.Int8OID,
+					})
+					// Newer versions of pgbouncer need this defined. See the discussion here:
+					// https://github.com/jackc/pgx/issues/649
+					info.RegisterDataType(pgtype.DataType{
+						Value: &pgtype.OIDValue{},
+						Name:  "numericOID",
+						OID:   pgtype.NumericOID,
+					})
+
+					return info, nil
+				},
+			},
+		}
+		stdlib.RegisterDriverConfig(d)
+		connectionString = d.ConnectionString(p.Address)
+	}
+
+	if p.DB, err = sql.Open("pgx", connectionString); err != nil {
 		return err
 	}
 	p.DB.SetMaxOpenConns(p.MaxOpen)
